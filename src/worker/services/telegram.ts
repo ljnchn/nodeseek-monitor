@@ -1,5 +1,5 @@
 import { Database } from '../db/database';
-import { Post, KeywordSub } from '../db/types';
+import { Post } from '../db/types';
 
 export class TelegramService {
   constructor(private db: Database, private botToken: string) {}
@@ -18,8 +18,7 @@ export class TelegramService {
           disable_web_page_preview: true,
         }),
       });
-
-      const result = await response.json();
+      const result = await response.json() as { ok: boolean };
       return result.ok;
     } catch (error) {
       console.error('Error sending Telegram message:', error);
@@ -39,7 +38,7 @@ export class TelegramService {
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json() as { ok: boolean };
       return result.ok;
     } catch (error) {
       console.error('Error setting webhook:', error);
@@ -56,7 +55,7 @@ export class TelegramService {
 
     switch (command) {
       case '/start':
-        await this.handleStart(chatId, update.message.from);
+        await this.handleStart(chatId);
         break;
       case '/stop':
         await this.handleStop(chatId);
@@ -81,7 +80,7 @@ export class TelegramService {
     }
   }
 
-  private async handleStart(chatId: string, from: any): Promise<void> {
+  private async handleStart(chatId: string): Promise<void> {
     const config = await this.db.getBaseConfig();
     if (!config) {
       await this.sendMessage(chatId, '系统未初始化，请先在网页端完成初始化设置。');

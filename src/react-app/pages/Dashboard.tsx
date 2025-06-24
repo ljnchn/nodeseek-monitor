@@ -50,7 +50,7 @@ export function Dashboard() {
     creator: '',
     category: ''
   });
-  const [editingSub, setEditingSub] = useState<Subscription | null>(null);
+  useState<Subscription | null>(null);
 
   useEffect(() => {
     loadData();

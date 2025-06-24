@@ -224,7 +224,7 @@ export default {
     return app.fetch(request, env);
   },
   
-  async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
+  async scheduled(env: Env): Promise<void> {
     const db = new Database(env.DB);
     const config = await db.getBaseConfig();
     

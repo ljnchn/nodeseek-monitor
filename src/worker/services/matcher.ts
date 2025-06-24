@@ -6,7 +6,7 @@ export class MatcherService {
     let matchedSubId: number | undefined;
 
     for (const sub of subs) {
-      const keywords = [sub.keyword1, sub.keyword2, sub.keyword3].filter(Boolean);
+      const keywords = [sub.keyword1, sub.keyword2, sub.keyword3].filter(Boolean) as string[];
       const isMatch = this.checkKeywordMatch(post, keywords, config.only_title === 1);
       
       if (isMatch) {
