@@ -17,6 +17,16 @@
 	"assets": {
 		"directory": "./dist/client",
 		"not_found_handling": "single-page-application"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "nodeseek-monitor",
+			"database_id": "your-database-id"
+		}
+	],
+	"triggers": {
+		"crons": ["*/10 * * * *"]
 	}
 	/**
 	 * Smart Placement

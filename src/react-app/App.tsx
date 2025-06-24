@@ -1,66 +1,56 @@
-// src/App.tsx
+import { useState, useEffect } from "react";
+import { InitPage } from "./pages/InitPage";
+import { LoginPage } from "./pages/LoginPage";
+import { Dashboard } from "./pages/Dashboard";
 
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
-import cloudflareLogo from "./assets/Cloudflare_Logo.svg";
-import honoLogo from "./assets/hono.svg";
-import "./App.css";
+type AppState = 'loading' | 'init' | 'login' | 'dashboard';
 
 function App() {
-  const [count, setCount] = useState(0);
-  const [name, setName] = useState("unknown");
+  const [appState, setAppState] = useState<AppState>('loading');
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-        <a href="https://hono.dev/" target="_blank">
-          <img src={honoLogo} className="logo cloudflare" alt="Hono logo" />
-        </a>
-        <a href="https://workers.cloudflare.com/" target="_blank">
-          <img
-            src={cloudflareLogo}
-            className="logo cloudflare"
-            alt="Cloudflare logo"
-          />
-        </a>
+  useEffect(() => {
+    checkSystemStatus();
+  }, []);
+
+  const checkSystemStatus = async () => {
+    try {
+      const response = await fetch('/api/config');
+      if (response.ok) {
+        setAppState('login');
+      } else if (response.status === 404) {
+        setAppState('init');
+      }
+    } catch (error) {
+      console.error('Failed to check system status:', error);
+      setAppState('init');
+    }
+  };
+
+  const handleInit = () => {
+    setAppState('login');
+  };
+
+  const handleLogin = () => {
+    setAppState('dashboard');
+  };
+
+  if (appState === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
       </div>
-      <h1>Vite + React + Hono + Cloudflare</h1>
-      <div className="card">
-        <button
-          onClick={() => setCount((count) => count + 1)}
-          aria-label="increment"
-        >
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <div className="card">
-        <button
-          onClick={() => {
-            fetch("/api/")
-              .then((res) => res.json() as Promise<{ name: string }>)
-              .then((data) => setName(data.name));
-          }}
-          aria-label="get name"
-        >
-          Name from API is: {name}
-        </button>
-        <p>
-          Edit <code>worker/index.ts</code> to change the name
-        </p>
-      </div>
-      <p className="read-the-docs">Click on the logos to learn more</p>
-    </>
-  );
+    );
+  }
+
+  if (appState === 'init') {
+    return <InitPage onInit={handleInit} />;
+  }
+
+  if (appState === 'login') {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  return <Dashboard />;
 }
 
 export default App;
