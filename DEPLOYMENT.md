@@ -56,8 +56,8 @@ wrangler d1 migrations apply nodeseek-monitor
 ### 5. Deploy to Cloudflare Workers
 
 ```bash
-npm run build
-npm run deploy
+pnpm run build
+pnpm run deploy
 ```
 
 ### 6. Get Your Telegram Chat ID
@@ -118,8 +118,8 @@ To update your deployment:
 ```bash
 git pull origin main
 npm install
-npm run build
-npm run deploy
+pnpm run build
+pnpm run deploy
 ```
 
 ## Database Management

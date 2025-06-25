@@ -9,6 +9,7 @@ function App() {
   const [appState, setAppState] = useState<AppState>('loading');
 
   useEffect(() => {
+    document.documentElement.classList.add('dark');
     checkSystemStatus();
   }, []);
 
@@ -37,7 +38,7 @@ function App() {
   if (appState === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+        <div className="text-lg">加载中...</div>
       </div>
     );
   }

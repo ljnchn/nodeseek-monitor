@@ -32,28 +32,28 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         onLogin();
       } else {
         const data = await response.json();
-        setError(data.error || 'Login failed');
+        setError(data.error || '登录失败');
       }
     } catch (err) {
-      setError('Network error');
+      setError('网络错误');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Login</CardTitle>
+          <CardTitle>登录</CardTitle>
           <CardDescription>
-            Enter your credentials to access the dashboard
+            输入您的登录凭据以访问仪表板
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">用户名</Label>
               <Input
                 id="username"
                 type="text"
@@ -63,7 +63,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">密码</Label>
               <Input
                 id="password"
                 type="password"
@@ -73,10 +73,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               />
             </div>
             {error && (
-              <div className="text-red-600 text-sm">{error}</div>
+              <div className="text-red-500 text-sm">{error}</div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? '登录中...' : '登录'}
             </Button>
           </form>
         </CardContent>

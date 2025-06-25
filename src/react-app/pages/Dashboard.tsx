@@ -117,13 +117,13 @@ export function Dashboard() {
       });
 
       if (response.ok) {
-        alert('Webhook set successfully!');
+        alert('Webhook 设置成功！');
       } else {
-        alert('Failed to set webhook');
+        alert('Webhook 设置失败');
       }
     } catch (error) {
       console.error('Failed to set webhook:', error);
-      alert('Failed to set webhook');
+      alert('Webhook 设置失败');
     }
   };
 
@@ -153,7 +153,7 @@ export function Dashboard() {
   };
 
   const deleteSubscription = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this subscription?')) return;
+    if (!confirm('您确定要删除这个订阅吗？')) return;
 
     try {
       const response = await fetch(`/api/subscriptions/${id}`, {
@@ -176,59 +176,59 @@ export function Dashboard() {
 
       if (response.ok) {
         const result = await response.json();
-        alert(`RSS processed: ${result.processed} posts, ${result.matched} matched`);
+        alert(`RSS 处理完成：${result.processed} 篇文章，${result.matched} 篇匹配`);
         loadData();
       } else {
-        alert('Failed to process RSS');
+        alert('RSS 处理失败');
       }
     } catch (error) {
       console.error('Failed to process RSS:', error);
-      alert('Failed to process RSS');
+      alert('RSS 处理失败');
     }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen">加载中...</div>;
   }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold">NodeSeek Monitor Dashboard</h1>
+      <h1 className="text-3xl font-bold">NodeSeek 监控仪表板</h1>
 
       {/* Basic Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Basic Settings</CardTitle>
-          <CardDescription>Configure Telegram bot and monitoring settings</CardDescription>
+          <CardTitle>基础设置</CardTitle>
+          <CardDescription>配置 Telegram 机器人和监控设置</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="botToken">Telegram Bot Token</Label>
+              <Label htmlFor="botToken">Telegram 机器人令牌</Label>
               <div className="flex gap-2">
                 <Input
                   id="botToken"
                   type="password"
                   value={botToken}
                   onChange={(e) => setBotToken(e.target.value)}
-                  placeholder="Enter your bot token"
+                  placeholder="输入您的机器人令牌"
                 />
-                <Button onClick={setBotWebhook}>Set Webhook</Button>
+                <Button onClick={setBotWebhook}>设置 Webhook</Button>
               </div>
-              <p className="text-sm text-gray-600">
-                Status: {config?.bot_token ? 'Configured' : 'Not configured'}
+              <p className="text-sm text-muted-foreground">
+                状态：{config?.bot_token ? '已配置' : '未配置'}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="chatId">Telegram Chat ID</Label>
+              <Label htmlFor="chatId">Telegram 聊天 ID</Label>
               <Input
                 id="chatId"
                 value={config?.chat_id || ''}
                 onChange={(e) => updateConfig({ chat_id: e.target.value })}
-                placeholder="Your chat ID"
+                placeholder="您的聊天 ID"
               />
-              <p className="text-sm text-gray-600">
-                Status: {config?.chat_id ? 'Configured' : 'Not configured'}
+              <p className="text-sm text-muted-foreground">
+                状态：{config?.chat_id ? '已配置' : '未配置'}
               </p>
             </div>
           </div>
@@ -239,19 +239,19 @@ export function Dashboard() {
                 checked={config?.only_title === 1}
                 onCheckedChange={(checked) => updateConfig({ only_title: checked ? 1 : 0 })}
               />
-              <Label>Only match title</Label>
+              <Label>仅匹配标题</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
                 checked={config?.stop_push === 1}
                 onCheckedChange={(checked) => updateConfig({ stop_push: checked ? 1 : 0 })}
               />
-              <Label>Stop push notifications</Label>
+              <Label>停止推送通知</Label>
             </div>
           </div>
 
           <Button onClick={processRSS} className="w-full">
-            Process RSS Now
+            立即处理 RSS
           </Button>
         </CardContent>
       </Card>
@@ -259,40 +259,40 @@ export function Dashboard() {
       {/* Subscription Management */}
       <Card>
         <CardHeader>
-          <CardTitle>Subscription Management</CardTitle>
-          <CardDescription>Manage your keyword subscriptions</CardDescription>
+          <CardTitle>订阅管理</CardTitle>
+          <CardDescription>管理您的关键词订阅</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Add new subscription */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Input
-              placeholder="Keyword 1 (required)"
+              placeholder="关键词 1（必填）"
               value={newSub.keyword1}
               onChange={(e) => setNewSub({ ...newSub, keyword1: e.target.value })}
             />
             <Input
-              placeholder="Keyword 2 (optional)"
+              placeholder="关键词 2（可选）"
               value={newSub.keyword2}
               onChange={(e) => setNewSub({ ...newSub, keyword2: e.target.value })}
             />
             <Input
-              placeholder="Keyword 3 (optional)"
+              placeholder="关键词 3（可选）"
               value={newSub.keyword3}
               onChange={(e) => setNewSub({ ...newSub, keyword3: e.target.value })}
             />
             <Input
-              placeholder="Creator filter (optional)"
+              placeholder="作者筛选（可选）"
               value={newSub.creator}
               onChange={(e) => setNewSub({ ...newSub, creator: e.target.value })}
             />
             <Input
-              placeholder="Category filter (optional)"
+              placeholder="分类筛选（可选）"
               value={newSub.category}
               onChange={(e) => setNewSub({ ...newSub, category: e.target.value })}
             />
             <Button onClick={addSubscription} className="flex items-center gap-2">
               <PlusIcon className="w-4 h-4" />
-              Add Subscription
+              添加订阅
             </Button>
           </div>
 
@@ -305,14 +305,14 @@ export function Dashboard() {
                     {[sub.keyword1, sub.keyword2, sub.keyword3].filter(Boolean).join(' + ')}
                   </div>
                   {(sub.creator || sub.category) && (
-                    <div className="text-sm text-gray-600">
-                      {sub.creator && `Creator: ${sub.creator}`}
+                    <div className="text-sm text-muted-foreground">
+                      {sub.creator && `作者：${sub.creator}`}
                       {sub.creator && sub.category && ' | '}
-                      {sub.category && `Category: ${sub.category}`}
+                      {sub.category && `分类：${sub.category}`}
                     </div>
                   )}
-                  <div className="text-xs text-gray-500">
-                    Created: {new Date(sub.created_at).toLocaleString()}
+                  <div className="text-xs text-muted-foreground">
+                    创建时间：{new Date(sub.created_at).toLocaleString()}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -336,8 +336,8 @@ export function Dashboard() {
       {/* Recent Posts */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Posts</CardTitle>
-          <CardDescription>Latest posts and their push status</CardDescription>
+          <CardTitle>最新文章</CardTitle>
+          <CardDescription>最新文章及其推送状态</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -349,19 +349,19 @@ export function Dashboard() {
                     <p className="text-sm text-gray-600 mt-1">
                       {post.memo.substring(0, 100)}...
                     </p>
-                    <div className="text-xs text-gray-500 mt-2">
-                      Author: {post.creator} | Category: {post.category} | 
-                      Published: {new Date(post.pub_date).toLocaleString()}
+                    <div className="text-xs text-muted-foreground mt-2">
+                      作者：{post.creator} | 分类：{post.category} | 
+                      发布时间：{new Date(post.pub_date).toLocaleString()}
                     </div>
                   </div>
                   <div className="ml-4">
                     <span className={`px-2 py-1 rounded text-xs ${
-                      post.push_status === 0 ? 'bg-yellow-100 text-yellow-800' :
-                      post.push_status === 1 ? 'bg-green-100 text-green-800' :
-                      'bg-gray-100 text-gray-800'
+                      post.push_status === 0 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                      post.push_status === 1 ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                      'bg-secondary text-secondary-foreground'
                     }`}>
-                      {post.push_status === 0 ? 'Not pushed' :
-                       post.push_status === 1 ? 'Pushed' : 'No need to push'}
+                      {post.push_status === 0 ? '未推送' :
+                       post.push_status === 1 ? '已推送' : '无需推送'}
                     </span>
                   </div>
                 </div>

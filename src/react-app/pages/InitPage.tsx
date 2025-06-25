@@ -39,28 +39,28 @@ export function InitPage({ onInit }: InitPageProps) {
         onInit();
       } else {
         const data = await response.json();
-        setError(data.error || 'Initialization failed');
+        setError(data.error || '初始化失败');
       }
     } catch (err) {
-      setError('Network error');
+      setError('网络错误');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>System Initialization</CardTitle>
+          <CardTitle>系统初始化</CardTitle>
           <CardDescription>
-            Please set up your admin account and basic configuration
+            请设置管理员账户和基础配置
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">用户名</Label>
               <Input
                 id="username"
                 type="text"
@@ -70,7 +70,7 @@ export function InitPage({ onInit }: InitPageProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">密码</Label>
               <Input
                 id="password"
                 type="password"
@@ -80,21 +80,21 @@ export function InitPage({ onInit }: InitPageProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="chatId">Telegram Chat ID</Label>
+              <Label htmlFor="chatId">Telegram 聊天 ID</Label>
               <Input
                 id="chatId"
                 type="text"
                 value={chatId}
                 onChange={(e) => setChatId(e.target.value)}
-                placeholder="Your Telegram Chat ID"
+                placeholder="您的 Telegram 聊天 ID"
                 required
               />
             </div>
             {error && (
-              <div className="text-red-600 text-sm">{error}</div>
+              <div className="text-red-500 text-sm">{error}</div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Initializing...' : 'Initialize System'}
+              {loading ? '初始化中...' : '初始化系统'}
             </Button>
           </form>
         </CardContent>

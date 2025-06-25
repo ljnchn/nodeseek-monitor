@@ -105,13 +105,13 @@ The system uses three main tables:
 
 ```bash
 # Start development server
-npm run dev
+pnpm run dev
 
 # Build for production
-npm run build
+pnpm run build
 
 # Deploy to Cloudflare Workers
-npm run deploy
+pnpm run deploy
 
 # Run database migrations
 wrangler d1 migrations apply nodeseek-monitor
