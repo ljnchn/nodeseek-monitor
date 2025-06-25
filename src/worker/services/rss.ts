@@ -1,7 +1,7 @@
 import { RSSItem } from '../db/types';
 
 export class RSSService {
-  private readonly RSS_URL = 'https://www.nodeseek.com/api/feed';
+  private readonly RSS_URL = 'https://rss.nodeseek.com/';
 
   async fetchRSS(): Promise<RSSItem[]> {
     try {
