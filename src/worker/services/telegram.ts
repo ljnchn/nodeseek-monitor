@@ -5,6 +5,38 @@ import { MatcherService } from './matcher';
 export class TelegramService {
   constructor(private db: Database, private botToken: string) {}
 
+  // 静态方法验证 bot token（不需要数据库实例）
+  static async validateBotToken(botToken: string): Promise<{ valid: boolean; botInfo?: any; error?: string }> {
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+      const result = await response.json();
+      
+      if (result.ok) {
+        return { valid: true, botInfo: result.result };
+      } else {
+        return { valid: false, error: result.description || '无效的 bot token' };
+      }
+    } catch (error) {
+      return { valid: false, error: '网络错误或无效的 bot token' };
+    }
+  }
+
+  // 验证 bot token 是否有效
+  async validateBotToken(): Promise<{ valid: boolean; botInfo?: any; error?: string }> {
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${this.botToken}/getMe`);
+      const result = await response.json();
+      
+      if (result.ok) {
+        return { valid: true, botInfo: result.result };
+      } else {
+        return { valid: false, error: result.description || '无效的 bot token' };
+      }
+    } catch (error) {
+      return { valid: false, error: '网络错误或无效的 bot token' };
+    }
+  }
+
   async sendMessage(chatId: string, text: string, parseMode: 'HTML' | 'Markdown' = 'HTML'): Promise<boolean> {
     try {
       const response = await fetch(`https://api.telegram.org/bot${this.botToken}/sendMessage`, {

@@ -3,6 +3,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { AuthUtils } from '../lib/auth';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -29,6 +30,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        if (data.sessionToken) {
+          AuthUtils.setToken(data.sessionToken);
+        }
         onLogin();
       } else {
         const data = await response.json();

@@ -7,6 +7,33 @@ import { MatcherService } from "./services/matcher";
 
 const app = new Hono<{ Bindings: Env }>();
 
+// 简单的内存session存储（生产环境应该使用数据库或Redis）
+const activeSessions = new Set<string>();
+
+// 生成session token
+function generateSessionToken(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+// 认证中间件
+const authMiddleware = async (c: any, next: any) => {
+  // 跳过不需要认证的路径
+  const publicPaths = ['/api/init', '/api/login', '/api/logout', '/api/health', '/api/telegram/webhook', '/api/validate-bot-token', '/api/config'];
+  if (publicPaths.some(path => c.req.path.startsWith(path))) {
+    await next();
+    return;
+  }
+
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+  
+  if (!token || !activeSessions.has(token)) {
+    return c.json({ error: '未授权访问' }, 401);
+  }
+  
+  await next();
+};
+
 // 自动初始化数据库的中间件
 app.use("*", async (c, next) => {
   // 仅在第一次访问时初始化数据库
@@ -36,6 +63,9 @@ app.use("*", async (c, next) => {
   await next();
 });
 
+// 应用认证中间件
+app.use("*", authMiddleware);
+
 // Database initialization API
 app.post("/api/init", async (c) => {
   const db = new Database(c.env.DB);
@@ -60,9 +90,19 @@ app.get("/api/config", async (c) => {
       return c.json({ error: "系统未初始化" }, 404);
     }
     
-    // Don't return password
-    const { password, ...safeConfig } = config;
-    return c.json(safeConfig);
+    // 检查是否有有效的认证token
+    const authHeader = c.req.header('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    const isAuthenticated = token && activeSessions.has(token);
+    
+    if (isAuthenticated) {
+      // 已认证，返回完整配置（除了密码）
+      const { password, ...safeConfig } = config;
+      return c.json(safeConfig);
+    } else {
+      // 未认证，只返回系统是否已初始化的状态
+      return c.json({ initialized: true });
+    }
   } catch (error) {
     console.error("获取配置失败:", error);
     return c.json({ error: "获取配置失败" }, 500);
@@ -75,25 +115,75 @@ app.post("/api/config", async (c) => {
   try {
     const body = await c.req.json();
     
-    // 基础验证
-    if (!body.username || !body.password || !body.chat_id) {
-      return c.json({ error: "用户名、密码和聊天ID为必填项" }, 400);
-    }
+    // 检查是否已认证
+    const authHeader = c.req.header('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    const isAuthenticated = token && activeSessions.has(token);
     
     const existingConfig = await db.getBaseConfig();
     
     if (existingConfig) {
-      const updatedConfig = await db.updateBaseConfig(body);
-      const { password, ...safeConfig } = updatedConfig!;
-      return c.json(safeConfig);
+      // 如果配置已存在
+      if (isAuthenticated) {
+        // 已认证用户可以更新任何字段（除了用户名密码需要提供旧的）
+        const updatedConfig = await db.updateBaseConfig(body);
+        const { password, ...safeConfig } = updatedConfig!;
+        return c.json(safeConfig);
+      } else {
+        // 未认证用户只能在初始化时设置完整配置
+        if (!body.username || !body.password) {
+          return c.json({ error: "用户名和密码为必填项" }, 400);
+        }
+        const updatedConfig = await db.updateBaseConfig(body);
+        const { password, ...safeConfig } = updatedConfig!;
+        return c.json(safeConfig);
+      }
     } else {
-      const newConfig = await db.createBaseConfig(body);
+      // 配置不存在，创建新配置（初始化时）
+      if (!body.username || !body.password) {
+        return c.json({ error: "用户名和密码为必填项" }, 400);
+      }
+      
+      const configData = {
+        ...body,
+        chat_id: body.chat_id || 'temp_chat_id'
+      };
+      const newConfig = await db.createBaseConfig(configData);
       const { password, ...safeConfig } = newConfig;
       return c.json(safeConfig);
     }
   } catch (error) {
     console.error("保存配置失败:", error);
     return c.json({ error: "保存配置失败" }, 500);
+  }
+});
+
+// Validate Bot Token API
+app.post("/api/validate-bot-token", async (c) => {
+  try {
+    const { botToken } = await c.req.json();
+    
+    if (!botToken) {
+      return c.json({ error: "Bot token 不能为空" }, 400);
+    }
+    
+    const validation = await TelegramService.validateBotToken(botToken);
+    
+    if (validation.valid) {
+      return c.json({ 
+        valid: true, 
+        botInfo: validation.botInfo,
+        message: "Bot token 验证成功" 
+      });
+    } else {
+      return c.json({ 
+        valid: false, 
+        error: validation.error 
+      }, 400);
+    }
+  } catch (error) {
+    console.error("验证 bot token 失败:", error);
+    return c.json({ error: "验证 bot token 失败" }, 500);
   }
 });
 
@@ -117,10 +207,30 @@ app.post("/api/login", async (c) => {
       return c.json({ error: "用户名或密码错误" }, 401);
     }
     
-    return c.json({ success: true, message: "登录成功" });
+    const sessionToken = generateSessionToken();
+    activeSessions.add(sessionToken);
+    
+    return c.json({ success: true, message: "登录成功", sessionToken });
   } catch (error) {
     console.error("登录失败:", error);
     return c.json({ error: "登录失败" }, 500);
+  }
+});
+
+// Logout API
+app.post("/api/logout", async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (token) {
+      activeSessions.delete(token);
+    }
+    
+    return c.json({ success: true, message: "登出成功" });
+  } catch (error) {
+    console.error("登出失败:", error);
+    return c.json({ error: "登出失败" }, 500);
   }
 });
 
@@ -282,24 +392,86 @@ app.post("/api/telegram/webhook", async (c) => {
   }
 });
 
+// Get Bot User Info (for binding user)
+app.post("/api/telegram/get-user-info", async (c) => {
+  try {
+    const { botToken, chatId } = await c.req.json();
+    
+    if (!botToken) {
+      return c.json({ error: "Bot token 不能为空" }, 400);
+    }
+    
+    if (!chatId) {
+      return c.json({ error: "Chat ID 不能为空" }, 400);
+    }
+    
+    // 验证 bot token
+    const validation = await TelegramService.validateBotToken(botToken);
+    
+    if (!validation.valid) {
+      return c.json({ error: validation.error }, 400);
+    }
+    
+    // 获取用户信息
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/getChat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+        }),
+      });
+      
+      const result = await response.json() as { ok: boolean; result?: any; description?: string };
+      
+      if (result.ok) {
+        return c.json({
+          success: true,
+          userInfo: result.result,
+          message: "用户信息获取成功"
+        });
+      } else {
+        return c.json({ 
+          error: "无法获取用户信息，请检查 Chat ID 是否正确" 
+        }, 400);
+      }
+    } catch (error) {
+      return c.json({ 
+        error: "获取用户信息失败" 
+      }, 500);
+    }
+  } catch (error) {
+    console.error("获取用户信息失败:", error);
+    return c.json({ error: "获取用户信息失败" }, 500);
+  }
+});
+
 // Set Telegram Webhook
 app.post("/api/telegram/set-webhook", async (c) => {
   const db = new Database(c.env.DB);
   
   try {
-    const config = await db.getBaseConfig();
-    
-    if (!config || !config.bot_token) {
-      return c.json({ error: "Telegram 机器人未配置" }, 400);
-    }
-    
-    const { webhookUrl } = await c.req.json();
+    const { webhookUrl, botToken } = await c.req.json();
     
     if (!webhookUrl) {
       return c.json({ error: "Webhook URL 不能为空" }, 400);
     }
     
-    const telegramService = new TelegramService(db, config.bot_token);
+    // 确定要使用的 bot token
+    let effectiveBotToken = botToken;
+    
+    if (!effectiveBotToken) {
+      // 如果请求中没有提供 bot token，尝试从数据库获取
+      const config = await db.getBaseConfig();
+      if (!config || !config.bot_token) {
+        return c.json({ error: "Telegram 机器人未配置" }, 400);
+      }
+      effectiveBotToken = config.bot_token;
+    }
+    
+    const telegramService = new TelegramService(db, effectiveBotToken);
     const success = await telegramService.setWebhook(webhookUrl);
     
     return c.json({ 

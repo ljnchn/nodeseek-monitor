@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { InitPage } from "./pages/InitPage";
 import { LoginPage } from "./pages/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
+import { AuthUtils } from "./lib/auth";
 
 type AppState = 'loading' | 'init' | 'login' | 'dashboard';
 
@@ -15,9 +16,24 @@ function App() {
 
   const checkSystemStatus = async () => {
     try {
+      // 如果已经有token，直接尝试访问需要认证的API
+      if (AuthUtils.isLoggedIn()) {
+        const response = await AuthUtils.authFetch('/api/config');
+        if (response.ok) {
+          setAppState('dashboard');
+          return;
+        }
+      }
+      
+      // 检查系统是否已初始化
       const response = await fetch('/api/config');
       if (response.ok) {
-        setAppState('login');
+        const data = await response.json();
+        if (data.initialized) {
+          setAppState('login');
+        } else {
+          setAppState('init');
+        }
       } else if (response.status === 404) {
         setAppState('init');
       }

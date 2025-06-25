@@ -5,6 +5,7 @@ import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { PlusIcon, EditIcon, DeleteIcon } from '../components/icons';
+import { AuthUtils } from '../lib/auth';
 
 interface Config {
   id: number;
@@ -59,9 +60,9 @@ export function Dashboard() {
   const loadData = async () => {
     try {
       const [configRes, subsRes, postsRes] = await Promise.all([
-        fetch('/api/config'),
-        fetch('/api/subscriptions'),
-        fetch('/api/posts?limit=10')
+        AuthUtils.authFetch('/api/config'),
+        AuthUtils.authFetch('/api/subscriptions'),
+        AuthUtils.authFetch('/api/posts?limit=10')
       ]);
 
       if (configRes.ok) {
@@ -88,9 +89,8 @@ export function Dashboard() {
 
   const updateConfig = async (updates: Partial<Config>) => {
     try {
-      const response = await fetch('/api/config', {
+      const response = await AuthUtils.authFetch('/api/config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
 
@@ -107,23 +107,32 @@ export function Dashboard() {
     if (!botToken) return;
 
     try {
+      // 先更新配置中的 bot token
       await updateConfig({ bot_token: botToken });
       
       const webhookUrl = `${window.location.origin}/api/telegram/webhook`;
-      const response = await fetch('/api/telegram/set-webhook', {
+      const response = await AuthUtils.authFetch('/api/telegram/set-webhook', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ webhookUrl }),
+        body: JSON.stringify({ 
+          webhookUrl,
+          botToken 
+        }),
       });
 
       if (response.ok) {
-        alert('Webhook 设置成功！');
+        const result = await response.json();
+        if (result.success) {
+          alert('Webhook 设置成功！');
+        } else {
+          alert('Webhook 设置失败: ' + result.message);
+        }
       } else {
-        alert('Webhook 设置失败');
+        const errorData = await response.json();
+        alert('Webhook 设置失败: ' + (errorData.error || '未知错误'));
       }
     } catch (error) {
       console.error('Failed to set webhook:', error);
-      alert('Webhook 设置失败');
+      alert('Webhook 设置失败: ' + (error instanceof Error ? error.message : '网络错误'));
     }
   };
 
@@ -131,9 +140,8 @@ export function Dashboard() {
     if (!newSub.keyword1) return;
 
     try {
-      const response = await fetch('/api/subscriptions', {
+      const response = await AuthUtils.authFetch('/api/subscriptions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keyword1: newSub.keyword1,
           keyword2: newSub.keyword2 || undefined,
@@ -156,7 +164,7 @@ export function Dashboard() {
     if (!confirm('您确定要删除这个订阅吗？')) return;
 
     try {
-      const response = await fetch(`/api/subscriptions/${id}`, {
+      const response = await AuthUtils.authFetch(`/api/subscriptions/${id}`, {
         method: 'DELETE',
       });
 
@@ -170,7 +178,7 @@ export function Dashboard() {
 
   const processRSS = async () => {
     try {
-      const response = await fetch('/api/process-rss', {
+      const response = await AuthUtils.authFetch('/api/process-rss', {
         method: 'POST',
       });
 
@@ -193,7 +201,12 @@ export function Dashboard() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold">NodeSeek 监控仪表板</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">NodeSeek 监控仪表板</h1>
+        <Button onClick={AuthUtils.logout} variant="outline">
+          登出
+        </Button>
+      </div>
 
       {/* Basic Settings */}
       <Card>

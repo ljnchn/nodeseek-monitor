@@ -3,8 +3,30 @@ import { BaseConfig, Post, KeywordSub } from './types';
 export class Database {
   constructor(private db: D1Database) {}
 
+  // 检查表是否已经存在
+  async checkTablesExist(): Promise<boolean> {
+    try {
+      const result = await this.db.prepare(`
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name IN ('base_config', 'posts', 'keywords_sub')
+      `).all();
+      
+      return result.results.length === 3;
+    } catch (error) {
+      console.error('检查表是否存在失败:', error);
+      return false;
+    }
+  }
+
   // 初始化数据表
   async initializeTables(): Promise<void> {
+    // 检查表是否已经存在
+    const tablesExist = await this.checkTablesExist();
+    if (tablesExist) {
+      console.log('数据表已存在，跳过初始化');
+      return;
+    }
+
     const statements = [
       // 基础配置表
       `CREATE TABLE IF NOT EXISTS base_config (
@@ -13,6 +35,8 @@ export class Database {
         password TEXT NOT NULL,
         bot_token TEXT DEFAULT NULL,
         chat_id TEXT NOT NULL,
+        tg_name TEXT DEFAULT NULL,
+        tg_username TEXT DEFAULT NULL,
         stop_push INTEGER DEFAULT 0,
         only_title INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -40,7 +64,7 @@ export class Database {
       // 关键词订阅表
       `CREATE TABLE IF NOT EXISTS keywords_sub (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        keyword1 TEXT NOT NULL,
+        keyword1 TEXT DEFAULT NULL,
         keyword2 TEXT DEFAULT NULL,
         keyword3 TEXT DEFAULT NULL,
         creator TEXT NULL,
