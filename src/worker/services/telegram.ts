@@ -90,6 +90,9 @@ export class TelegramService {
       case '/start':
         await this.handleStart(chatId);
         break;
+      case '/bind':
+        await this.handleBind(chatId, update);
+        break;
       case '/stop':
         await this.handleStop(chatId);
         break;
@@ -119,6 +122,57 @@ export class TelegramService {
     }
   }
 
+  private async handleBind(chatId: string, update: any): Promise<void> {
+    const config = await this.db.getBaseConfig();
+    if (!config) {
+      await this.sendMessage(chatId, '⚠️ 系统未初始化，请先在网页端完成初始化设置。');
+      return;
+    }
+
+    // 获取用户信息
+    const user = update.message.from;
+    const userInfo = {
+      id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      username: user.username,
+      language_code: user.language_code
+    };
+
+    // 更新配置，绑定用户
+    await this.db.updateBaseConfig({ 
+      chat_id: chatId,
+      telegram_user_info: JSON.stringify(userInfo)
+    });
+
+    const bindMessage = `
+✅ 用户绑定成功！
+
+👤 用户信息：
+🆔 Chat ID: ${chatId}
+📱 用户ID: ${user.id}
+👋 用户名: ${user.first_name}${user.last_name ? ' ' + user.last_name : ''}
+🏷️ 用户名: ${user.username ? '@' + user.username : '无'}
+
+🎉 您现在可以通过此机器人接收 NodeSeek 的监控通知了！
+
+📋 可用命令：
+/start - 显示帮助信息
+/stop - 停止推送通知
+/resume - 恢复推送通知  
+/list - 列出所有订阅
+/add <关键词> - 添加新订阅
+/delete <ID> - 删除订阅
+/post - 查看最近文章
+/stats - 查看统计信息
+/help - 显示详细帮助
+
+💡 您也可以在网页端管理订阅和查看统计信息。
+`;
+
+    await this.sendMessage(chatId, bindMessage);
+  }
+
   private async handleStart(chatId: string): Promise<void> {
     const config = await this.db.getBaseConfig();
     if (!config) {
@@ -134,6 +188,7 @@ export class TelegramService {
 
 📋 可用命令：
 /start - 显示此帮助信息
+/bind - 绑定当前用户
 /stop - 停止推送通知
 /resume - 恢复推送通知  
 /list - 列出所有订阅

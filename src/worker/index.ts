@@ -516,6 +516,40 @@ app.post("/api/process-rss", async (c) => {
   }
 });
 
+// Check binding status
+app.get("/api/telegram/binding-status", async (c) => {
+  const db = new Database(c.env.DB);
+  
+  try {
+    const config = await db.getBaseConfig();
+    
+    if (!config) {
+      return c.json({ bound: false, message: "系统未初始化" });
+    }
+    
+    const bound = !!(config.chat_id && config.chat_id !== 'temp_chat_id');
+    let userInfo = null;
+    
+    if (bound && config.telegram_user_info) {
+      try {
+        userInfo = JSON.parse(config.telegram_user_info);
+      } catch (error) {
+        console.error("解析用户信息失败:", error);
+      }
+    }
+    
+    return c.json({
+      bound,
+      chat_id: bound ? config.chat_id : null,
+      user_info: userInfo,
+      message: bound ? "用户已绑定" : "用户未绑定"
+    });
+  } catch (error) {
+    console.error("检查绑定状态失败:", error);
+    return c.json({ error: "检查绑定状态失败" }, 500);
+  }
+});
+
 // Health check
 app.get("/api/health", async (c) => {
   return c.json({ 

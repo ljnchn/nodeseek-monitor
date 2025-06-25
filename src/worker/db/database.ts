@@ -37,6 +37,7 @@ export class Database {
         chat_id TEXT NOT NULL,
         tg_name TEXT DEFAULT NULL,
         tg_username TEXT DEFAULT NULL,
+        telegram_user_info TEXT DEFAULT NULL,
         stop_push INTEGER DEFAULT 0,
         only_title INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -134,6 +135,10 @@ export class Database {
     if (config.only_title !== undefined) {
       fields.push('only_title = ?');
       values.push(config.only_title);
+    }
+    if (config.telegram_user_info !== undefined) {
+      fields.push('telegram_user_info = ?');
+      values.push(config.telegram_user_info);
     }
 
     if (fields.length === 0) return null;

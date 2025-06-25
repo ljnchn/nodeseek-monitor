@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS base_config (
   chat_id TEXT NOT NULL, -- telegram chat id
   tg_name TEXT DEFAULT NULL, -- telegram 用户名
   tg_username TEXT DEFAULT NULL, -- telegram 用户名
+  telegram_user_info TEXT DEFAULT NULL, -- telegram 用户信息JSON
   stop_push INTEGER DEFAULT 0, -- 是否停止推送
   only_title INTEGER DEFAULT 0, -- 是否只匹配标题
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

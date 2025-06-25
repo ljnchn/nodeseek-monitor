@@ -6,6 +6,7 @@ export interface BaseConfig {
   chat_id: string;
   stop_push: number;
   only_title: number;
+  telegram_user_info?: string;
   created_at?: string;
   updated_at?: string;
 }
