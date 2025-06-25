@@ -82,6 +82,22 @@ export function Dashboard() {
     category: ''
   });
 
+  // 分类映射表
+  const categoryMap = {
+    'daily': '📅 日常',
+    'tech': '💻 技术',
+    'info': 'ℹ️ 情报',
+    'review': '⭐ 测评',
+    'trade': '💰 交易',
+    'carpool': '🚗 拼车',
+    'promotion': '📢 推广',
+    'life': '🏠 生活',
+    'dev': '⚡ Dev',
+    'photo': '📷 贴图',
+    'expose': '🚨 曝光',
+    'sandbox': '🏖️ 沙盒'
+  } as const;
+
   useEffect(() => {
     loadData();
   }, []);
@@ -164,13 +180,21 @@ export function Dashboard() {
 
 
   const addSubscription = async () => {
-    if (!newSub.keyword1) return;
+    // 检查是否至少有一个条件
+    const hasKeyword = newSub.keyword1 || newSub.keyword2 || newSub.keyword3;
+    const hasCreator = newSub.creator.trim();
+    const hasCategory = newSub.category;
+    
+    if (!hasKeyword && !hasCreator && !hasCategory) {
+      alert('至少需要设置一个关键词、作者或分类');
+      return;
+    }
 
     try {
       const response = await AuthUtils.authFetch('/api/subscriptions', {
         method: 'POST',
         body: JSON.stringify({
-          keyword1: newSub.keyword1,
+          keyword1: newSub.keyword1 || undefined,
           keyword2: newSub.keyword2 || undefined,
           keyword3: newSub.keyword3 || undefined,
           creator: newSub.creator || undefined,
@@ -181,9 +205,13 @@ export function Dashboard() {
       if (response.ok) {
         setNewSub({ keyword1: '', keyword2: '', keyword3: '', creator: '', category: '' });
         loadData();
+      } else {
+        const errorData = await response.json();
+        alert('添加订阅失败: ' + (errorData.error || '未知错误'));
       }
     } catch (error) {
       console.error('Failed to add subscription:', error);
+      alert('添加订阅失败: 网络错误');
     }
   };
 
@@ -219,6 +247,26 @@ export function Dashboard() {
     } catch (error) {
       console.error('Failed to process RSS:', error);
       alert('RSS 处理失败');
+    }
+  };
+
+  const testScheduledTask = async () => {
+    try {
+      const response = await AuthUtils.authFetch('/api/trigger-scheduled-task', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`定时任务测试成功：${JSON.stringify(result.result, null, 2)}`);
+        loadData();
+      } else {
+        const errorData = await response.json();
+        alert(`定时任务测试失败：${errorData.error || '未知错误'}\n详情：${errorData.details || ''}`);
+      }
+    } catch (error) {
+      console.error('Failed to test scheduled task:', error);
+      alert('定时任务测试失败：网络错误');
     }
   };
 
@@ -312,7 +360,7 @@ export function Dashboard() {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">{stats.posts.today}</div>
-              <div className="text-sm text-muted-foreground">今日文章</div>
+              <div className="text-sm text-muted-foreground">今日推送</div>
             </div>
           </div>
         </CardContent>
@@ -431,12 +479,19 @@ export function Dashboard() {
                 <CardTitle>手动操作</CardTitle>
                 <CardDescription>立即执行监控任务</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
                 <Button onClick={processRSS} className="w-full" size="lg">
                   🔄 立即处理 RSS 并推送
                 </Button>
-                <p className="text-sm text-muted-foreground mt-2 text-center">
+                <p className="text-sm text-muted-foreground text-center">
                   手动触发一次完整的 RSS 抓取和匹配流程
+                </p>
+                
+                <Button onClick={testScheduledTask} className="w-full" variant="outline" size="lg">
+                  ⚡ 测试定时任务
+                </Button>
+                <p className="text-sm text-muted-foreground text-center">
+                  测试定时任务是否正常工作
                 </p>
               </CardContent>
             </Card>
@@ -452,9 +507,9 @@ export function Dashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Add new subscription */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 <Input
-                  placeholder="关键词 1（必填）"
+                  placeholder="关键词 1（可选）"
                   value={newSub.keyword1}
                   onChange={(e) => setNewSub({ ...newSub, keyword1: e.target.value })}
                 />
@@ -473,50 +528,70 @@ export function Dashboard() {
                   value={newSub.creator}
                   onChange={(e) => setNewSub({ ...newSub, creator: e.target.value })}
                 />
-                <Input
-                  placeholder="分类筛选（可选）"
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   value={newSub.category}
                   onChange={(e) => setNewSub({ ...newSub, category: e.target.value })}
-                />
-                <Button onClick={addSubscription} className="flex items-center gap-2">
+                  aria-label="选择分类"
+                >
+                  <option value="">选择分类（可选）</option>
+                  {Object.entries(categoryMap).map(([key, value]) => (
+                    <option key={key} value={key}>{value}</option>
+                  ))}
+                </select>
+                <Button onClick={addSubscription} className="flex items-center gap-2 md:col-span-2 lg:col-span-1">
                   <PlusIcon className="w-4 h-4" />
                   添加订阅
                 </Button>
               </div>
+              
+              <div className="text-sm text-muted-foreground">
+                💡 提示：至少需要设置一个关键词、作者或分类。可以单独使用分类或作者进行筛选。
+              </div>
 
               {/* Subscription list */}
               <div className="space-y-2">
-                {subscriptions.map((sub) => (
-                  <div key={sub.id} className="flex items-center justify-between p-3 border rounded">
-                    <div>
-                      <div className="font-medium">
-                        {[sub.keyword1, sub.keyword2, sub.keyword3].filter(Boolean).join(' + ')}
-                      </div>
-                      {(sub.creator || sub.category) && (
-                        <div className="text-sm text-muted-foreground">
-                          {sub.creator && `作者：${sub.creator}`}
-                          {sub.creator && sub.category && ' | '}
-                          {sub.category && `分类：${sub.category}`}
+                {subscriptions.map((sub) => {
+                  const keywords = [sub.keyword1, sub.keyword2, sub.keyword3].filter(Boolean);
+                  const categoryDisplay = sub.category ? categoryMap[sub.category as keyof typeof categoryMap] || sub.category : null;
+                  
+                  return (
+                    <div key={sub.id} className="flex items-center justify-between p-3 border rounded">
+                      <div>
+                        <div className="font-medium">
+                          {keywords.length > 0 ? keywords.join(' + ') : '无关键词'}
                         </div>
-                      )}
-                      <div className="text-xs text-muted-foreground">
-                        创建时间：{new Date(sub.created_at).toLocaleString()}
+                        {(sub.creator || categoryDisplay) && (
+                          <div className="text-sm text-muted-foreground">
+                            {sub.creator && `👤 作者：${sub.creator}`}
+                            {sub.creator && categoryDisplay && ' | '}
+                            {categoryDisplay && `📂 分类：${categoryDisplay}`}
+                          </div>
+                        )}
+                        {keywords.length === 0 && !sub.creator && !categoryDisplay && (
+                          <div className="text-sm text-yellow-600">
+                            ⚠️ 该订阅无有效条件
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          创建时间：{new Date(sub.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <EditIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deleteSubscription(sub.id)}
+                        >
+                          <DeleteIcon className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <EditIcon className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => deleteSubscription(sub.id)}
-                      >
-                        <DeleteIcon className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -641,7 +716,7 @@ export function Dashboard() {
                   </div>
                   <div className="text-center p-4 border rounded">
                     <div className="text-2xl font-bold text-orange-600">{stats?.posts.today || 0}</div>
-                    <div className="text-sm text-muted-foreground">今日文章数</div>
+                    <div className="text-sm text-muted-foreground">今日推送数</div>
                   </div>
                 </div>
               </CardContent>

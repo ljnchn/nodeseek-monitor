@@ -9,7 +9,7 @@ export class TelegramService {
   static async validateBotToken(botToken: string): Promise<{ valid: boolean; botInfo?: any; error?: string }> {
     try {
       const response = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
-      const result = await response.json();
+      const result = await response.json() as { ok: boolean; result?: any; description?: string };
       
       if (result.ok) {
         return { valid: true, botInfo: result.result };
@@ -25,7 +25,7 @@ export class TelegramService {
   async validateBotToken(): Promise<{ valid: boolean; botInfo?: any; error?: string }> {
     try {
       const response = await fetch(`https://api.telegram.org/bot${this.botToken}/getMe`);
-      const result = await response.json();
+      const result = await response.json() as { ok: boolean; result?: any; description?: string };
       
       if (result.ok) {
         return { valid: true, botInfo: result.result };
@@ -227,12 +227,33 @@ export class TelegramService {
       return;
     }
 
+    // 分类映射表
+    const categoryMap: Record<string, string> = {
+      'daily': '📅 日常',
+      'tech': '💻 技术',
+      'info': 'ℹ️ 情报',
+      'review': '⭐ 测评',
+      'trade': '💰 交易',
+      'carpool': '🚗 拼车',
+      'promotion': '📢 推广',
+      'life': '🏠 生活',
+      'dev': '⚡ Dev',
+      'photo': '📷 贴图',
+      'expose': '🚨 曝光',
+      'sandbox': '🏖️ 沙盒'
+    };
+
     let message = '📋 当前订阅列表：\n\n';
     subs.forEach((sub, index) => {
-      const keywords = [sub.keyword1, sub.keyword2, sub.keyword3].filter(Boolean).join(' + ');
-      message += `${index + 1}. 🆔 ${sub.id} - 🔍 ${keywords}\n`;
-      if (sub.creator) message += `   👤 创建者: ${sub.creator}\n`;
-      if (sub.category) message += `   📂 分类: ${sub.category}\n`;
+      const keywords = [sub.keyword1, sub.keyword2, sub.keyword3].filter(Boolean) as string[];
+      const keywordStr = keywords.length > 0 ? keywords.join(' + ') : '无关键词';
+      
+      message += `${index + 1}. 🆔 ${sub.id} - 🔍 ${keywordStr}\n`;
+      if (sub.creator) message += `   👤 作者: ${sub.creator}\n`;
+      if (sub.category) {
+        const categoryDisplay = categoryMap[sub.category] ?? sub.category;
+        message += `   📂 分类: ${categoryDisplay}\n`;
+      }
       message += `   📅 创建时间: ${new Date(sub.created_at!).toLocaleString('zh-CN')}\n`;
       message += '\n';
     });
@@ -246,14 +267,21 @@ export class TelegramService {
     const parts = text.split(' ').slice(1); // 移除 /add
     
     if (parts.length === 0) {
-      await this.sendMessage(chatId, `❗ 请提供关键词。
+      await this.sendMessage(chatId, `❗ 请提供至少一个条件。
 
-格式：/add <关键词1> [关键词2] [关键词3]
+格式：/add [关键词] [creator:作者] [category:分类]
 
-示例：
-/add VPS 优惠
-/add 甲骨文 云服务
-/add Docker 教程 入门`);
+📋 可用分类：
+• daily - 📅 日常   • tech - 💻 技术   • info - ℹ️ 情报
+• review - ⭐ 测评  • trade - 💰 交易  • carpool - 🚗 拼车
+• promotion - 📢 推广  • life - 🏠 生活  • dev - ⚡ Dev
+• photo - 📷 贴图   • expose - 🚨 曝光  • sandbox - 🏖️ 沙盒
+
+💡 示例：
+/add VPS 优惠 - 添加关键词订阅
+/add creator:用户名 - 订阅特定作者
+/add category:tech - 订阅技术分类
+/add Docker creator:某某 category:tech - 组合条件`);
       return;
     }
 
@@ -262,35 +290,73 @@ export class TelegramService {
     let category: string | undefined;
     const keywords: string[] = [];
 
+    // 分类映射表
+    const categoryMap: Record<string, string> = {
+      'daily': '📅 日常',
+      'tech': '💻 技术',
+      'info': 'ℹ️ 情报',
+      'review': '⭐ 测评',
+      'trade': '💰 交易',
+      'carpool': '🚗 拼车',
+      'promotion': '📢 推广',
+      'life': '🏠 生活',
+      'dev': '⚡ Dev',
+      'photo': '📷 贴图',
+      'expose': '🚨 曝光',
+      'sandbox': '🏖️ 沙盒'
+    };
+
     for (const part of parts) {
       if (part.startsWith('creator:') || part.startsWith('作者:')) {
         creator = part.split(':')[1];
       } else if (part.startsWith('category:') || part.startsWith('分类:')) {
-        category = part.split(':')[1];
+        const cat = part.split(':')[1];
+        if (categoryMap[cat]) {
+          category = cat;
+        } else {
+          await this.sendMessage(chatId, `❗ 无效的分类 "${cat}"。请使用上述列表中的分类代码。`);
+          return;
+        }
       } else {
         keywords.push(part);
       }
     }
 
-    if (keywords.length === 0) {
-      await this.sendMessage(chatId, '❗ 至少需要一个关键词。');
+    // 检查是否至少有一个条件
+    if (keywords.length === 0 && !creator && !category) {
+      await this.sendMessage(chatId, '❗ 至少需要设置一个关键词、作者或分类。');
       return;
     }
 
     try {
+      // 使用新的验证方法
+      const validation = MatcherService.validateSubscription({
+        keyword1: keywords[0] || '',
+        keyword2: keywords[1] || '',
+        keyword3: keywords[2] || '',
+        creator,
+        category
+      });
+
+      if (!validation.valid) {
+        await this.sendMessage(chatId, `❗ 验证失败：\n${validation.errors.join('\n')}`);
+        return;
+      }
+
       const sub = await this.db.createKeywordSub({
-        keyword1: keywords[0],
-        keyword2: keywords[1] || undefined,
-        keyword3: keywords[2] || undefined,
+        keyword1: keywords[0] || '',
+        keyword2: keywords[1] || '',
+        keyword3: keywords[2] || '',
         creator,
         category,
       });
 
       const keywordStr = [sub.keyword1, sub.keyword2, sub.keyword3].filter(Boolean).join(' + ');
-      let message = `✅ 订阅添加成功！\n\n🆔 ID: ${sub.id}\n🔍 关键词: ${keywordStr}`;
+      let message = `✅ 订阅添加成功！\n\n🆔 ID: ${sub.id}`;
       
-      if (sub.creator) message += `\n👤 创建者: ${sub.creator}`;
-      if (sub.category) message += `\n📂 分类: ${sub.category}`;
+      if (keywordStr) message += `\n🔍 关键词: ${keywordStr}`;
+      if (sub.creator) message += `\n👤 作者: ${sub.creator}`;
+      if (sub.category) message += `\n📂 分类: ${categoryMap[sub.category] || sub.category}`;
       
       await this.sendMessage(chatId, message);
     } catch (error) {
@@ -389,13 +455,10 @@ export class TelegramService {
 • 最新订阅：${subs.length > 0 ? new Date(subs[0].created_at!).toLocaleDateString('zh-CN') : '无'}
 
 📰 文章统计（最近100条）：
-• 总文章数：${stats.totalPosts} 篇
-• 匹配文章：${stats.matchedPosts} 篇
-• 未匹配文章：${stats.unmatchedPosts} 篇
-• 匹配率：${stats.matchRate.toFixed(1)}%
-
-🔥 热门关键词：
-${stats.topKeywords.slice(0, 5).map((kw, i) => `${i + 1}. ${kw.keyword} (${kw.count}次)`).join('\n') || '暂无数据'}
+• 总文章数：${stats.total} 篇
+• 匹配文章：${stats.matched} 篇
+• 未匹配文章：${stats.total - stats.matched} 篇
+• 匹配率：${(stats.matched / stats.total * 100).toFixed(1)}%
 `;
 
       await this.sendMessage(chatId, message);

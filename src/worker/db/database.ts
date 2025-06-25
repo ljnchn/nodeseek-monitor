@@ -137,6 +137,12 @@ export class Database {
       values.push(config.only_title);
     }
     if (config.telegram_user_info !== undefined) {
+      // 解析 telegram_user_info 为 json 对象
+      const userInfo = JSON.parse(config.telegram_user_info);
+      fields.push('tg_name = ?');
+      values.push(userInfo.first_name);
+      fields.push('tg_username = ?');
+      values.push(userInfo.username);
       fields.push('telegram_user_info = ?');
       values.push(config.telegram_user_info);
     }
@@ -185,6 +191,21 @@ export class Database {
       ORDER BY pub_date DESC 
       LIMIT ?
     `).bind(limit).all();
+    return result.results as unknown as Post[];
+  }
+
+  async getTodayPushedPosts(): Promise<Post[]> {
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+
+    const result = await this.db.prepare(`
+      SELECT * FROM posts 
+      WHERE push_status = 1 
+      AND push_date >= ? 
+      AND push_date < ?
+      ORDER BY push_date DESC
+    `).bind(todayStart, todayEnd).all();
     return result.results as unknown as Post[];
   }
 
